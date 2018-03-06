@@ -138,14 +138,14 @@ class PileUp {
     val baseSum = qualSum.sums(baseIndex)
     val altBase = indexBase(altBaseIndex)
     val altBaseSum = qualSum.sums(altBaseIndex)
-    val (homo, score) = {
+    val (homo, score, allBaseSum) = {
       val total = qualSum.sum //+ insQual + delQual
       val homoScore = baseSum - (total - baseSum)
       val halfTotal = total / 2
       val heteroScore = total - (halfTotal - baseSum).abs - (halfTotal - altBaseSum).abs
       val homo = homoScore >= heteroScore
       val score = if (mqSum > 0) (homoScore - heteroScore).abs  * n / mqSum else 0
-      (homo, score)
+      (homo, score, total)
     }
     val (insertion, deletion, indel, homoIndel) = {
       val (ins, homoIns) = insertCall
