@@ -252,6 +252,14 @@ class GenomeRegion(val contig: ReferenceSequence, start: Int, stop: Int)
           // not one of the top two alternatives
           if (homo) addChange(i, 'snp, pu)
           else if (fixamb || bc.altBase != r) addChange(i, 'amb, pu)
+        } else if (!homo) {
+          // Once we are here, this is not called as homo, but major base is r, so alt base
+          // is not r. If alt freq is above a threshold, fix this to amb
+          val minFreq = 0.7
+          if (bc.allBaseSum > 0 && (bc.baseSum.toFloat/bc.allBaseSum < minFreq) & 
+            ((bc.altBaseSum+bc.baseSum).toFloat/bc.allBaseSum >= minFreq)) {
+            addChange(i, 'amb, pu)
+          }
         }
       }
     }
