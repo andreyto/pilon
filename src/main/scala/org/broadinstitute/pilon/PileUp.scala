@@ -182,16 +182,35 @@ class PileUp {
     def iupacBaseMulti : Char = {
       // prevent div by zero in freq calculation below
       if ( allBaseSum == 0 && Pilon.iupacMinQualSum == 0 ) return base
-      // code below should return max base when Pilon.iupacMinQualSum and
-      // pilon.iupacMinFreq are both 0.
+      // Code below should return max base when Pilon.iupacMinQualSum and
+      // pilon.iupacMinFreq are both 0, except when the top bases are tied,
+      // in which case it will return degenerate for the ties.
+      // Howver, this function is called only if isAmbig returns true, and that one will
+      // return false if the cutoffs at their default zero value. That provides a
+      // backward compatibility with previous Pilon behaviour when the new cutoff
+      // parameters are not set.
+      //
+      // The loop below implemens a look-ahead pattern so that we keep accumulating
+      // bases when their sums are equal even if the cutoffs are already reached.
       var cumSum : Long = 0
+      var lastSum : Long = 0
       for (i <- 0 until order.length) {
         val ind = order(i)
-        cumSum += qualSum.sums(ind)
-        if ((cumSum >= Pilon.iupacMinQualSum) && (cumSum.toFloat/allBaseSum >= Pilon.iupacMinFreq)) {
-          return Bases.toIUPACMulti(order.slice(0,i+1).map(indexBase))
+        val curSum = qualSum.sums(ind)
+        // (i>0) is optimization to avoid computing other conditions; it is not logically necessary here
+        // because curSum < lastSum also exists
+        if ( (i > 0) && (cumSum >= Pilon.iupacMinQualSum) && (cumSum.toFloat/allBaseSum >= Pilon.iupacMinFreq)) {
+          if (curSum < lastSum) {
+            // not tied with previous base, return all bases prior to this
+            return Bases.toIUPACMulti(order.slice(0, i).map(indexBase))
+          }
         }
+        // accumulate and shift for next cycle
+        cumSum += curSum
+        lastSum = curSum
       }
+      // This works because we use 'N' as both a degenerate for "all four bases" and as "not enough depth".
+      // Otherwise, we would have to check the cumSum after the loop above
       'N'
     }
 
