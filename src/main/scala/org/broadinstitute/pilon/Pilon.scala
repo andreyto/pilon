@@ -48,6 +48,8 @@ object Pilon {
   var flank = 10
   var gapMargin = 100000
   var iupac = false
+  var iupacMinFreq = 0.0
+  var iupacMinQualSum : Long = 0
   var minMinDepth = 5
   var minGap = 10
   var minDepth = 0.1
@@ -145,6 +147,12 @@ object Pilon {
         optionParse(tail)
       case "--iupac" :: tail =>
         iupac = true
+        optionParse(tail)
+      case "--iupacminfreq" :: value :: tail =>
+        iupacMinFreq = value.toFloat
+        optionParse(tail)
+      case "--iupacminqualsum" :: value :: tail =>
+        iupacMinQualSum = value.toLong
         optionParse(tail)
       case "--fix" :: value :: tail =>
         parseFixList(value)
@@ -354,6 +362,12 @@ object Pilon {
               Use reads marked as duplicates in the input BAMs (ignored by default).
            --iupac
               Output IUPAC ambiguous base codes in the output FASTA file when appropriate.
+           --iupacminfreq
+              Generate IUPAC code to represent those most frequent bases at each position that have
+              combined quality-weighted frequency at least this value (default 0)
+           --iupacminqualsum
+              Generate IUPAC code to represent those most frequent bases at each position that have
+              sum of their qualities at least this value (default 0)
            --nonpf
               Use reads which failed sequencer quality filtering (ignored by default).
            --targets targetlist

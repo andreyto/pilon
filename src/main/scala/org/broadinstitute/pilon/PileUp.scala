@@ -49,7 +49,7 @@ class PileUp {
     case 'T' => 3
     case _ => -1
   }
-  
+
   def indexBase(i: Int) : Char = "ACGT"(i)
   
   def weightedMq = {
@@ -130,9 +130,9 @@ class PileUp {
   
   class BaseCall {
     val n = count
-    val (baseIndex, altBaseIndex) = {
+    val (baseIndex, altBaseIndex, order) = {
       val order = qualSum.order
-      (order(0), order(1))
+      (order(0), order(1), order)
     }
     val base = if (n > 0) indexBase(baseIndex) else 'N'
     val baseSum = qualSum.sums(baseIndex)
@@ -177,6 +177,26 @@ class PileUp {
 
     def iupacBase = {
       if (homo) base else Bases.toIUPAC(base, altBase)
+    }
+
+    def iupacBaseMulti : Char = {
+      // prevent div by zero in freq calculation below
+      if ( allBaseSum == 0 && Pilon.iupacMinQualSum == 0 ) return base
+      // code below should return max base when Pilon.iupacMinQualSum and
+      // pilon.iupacMinFreq are both 0.
+      var cumSum : Long = 0
+      for (i <- 0 until order.length) {
+        val ind = order(i)
+        cumSum += qualSum.sums(ind)
+        if ((cumSum >= Pilon.iupacMinQualSum) && (cumSum.toFloat/allBaseSum >= Pilon.iupacMinFreq)) {
+          return Bases.toIUPACMulti(order.slice(0,i+1).map(indexBase))
+        }
+      }
+      'N'
+    }
+
+    def isAmbig = {
+      (allBaseSum < Pilon.iupacMinQualSum) || (allBaseSum > 0 && (baseSum.toFloat/allBaseSum < Pilon.iupacMinFreq))
     }
 
     def insertCall = {

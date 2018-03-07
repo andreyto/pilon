@@ -237,12 +237,20 @@ class GenomeRegion(val contig: ReferenceSequence, start: Int, stop: Int)
       weightedMq(i) = pu.weightedMq.toByte
       clips(i) = pu.clips.toShort
 
-      if (n >= minDepth && r != 'N' && !deleted(i) && bc.called) {
-        if (homo && b == r && bc.highConfidence && !bc.indel)
+      if (r != 'N' && !deleted(i) && bc.called) {
+        var decided = false
+        if (n >= minDepth) {
+        if (homo && b == r && bc.highConfidence && !bc.indel) {
           confirmed(i) = true
-        else if (bc.isInsertion && bc.homoIndel) addChange(i, 'ins, pu)
+          decided = true
+        }
+        else if (bc.isInsertion && bc.homoIndel) {
+          addChange(i, 'ins, pu)
+          decided = true
+        }
         else if (bc.isDeletion && bc.homoIndel) {
           addChange(i, 'del, pu)
+          decided = true
           for (j <- 1 until bc.deletion.length) {
             deleted(i + j) = true
             pileUpRegion(i + j).deletions += pu.deletions
@@ -250,14 +258,20 @@ class GenomeRegion(val contig: ReferenceSequence, start: Int, stop: Int)
         } else if (b != r) {
           // for ambiguous bases, fix them if --fix fixamb or if original base
           // not one of the top two alternatives
-          if (homo) addChange(i, 'snp, pu)
-          else if (fixamb || bc.altBase != r) addChange(i, 'amb, pu)
-        } else if (!homo) {
-          // Once we are here, this is not called as homo, but major base is r, so alt base
-          // is not r. If alt freq is above a threshold, fix this to amb
-          val minFreq = 0.7
-          if (bc.allBaseSum > 0 && (bc.baseSum.toFloat/bc.allBaseSum < minFreq) & 
-            ((bc.altBaseSum+bc.baseSum).toFloat/bc.allBaseSum >= minFreq)) {
+          if (homo) {
+            addChange(i, 'snp, pu)
+            decided = true
+          }
+          else if (fixamb || bc.altBase != r) {
+            addChange(i, 'amb, pu)
+            decided = true
+          }
+        } }
+        if (!decided && Pilon.iupac) {
+          // Once we are here, see if major base does not exceed the required minFreq,
+          // and change it to IUPAC code that would exceeds iupacMinFreq.
+          // That includes setting to N if iupacMinQualSum is not reached.
+          if (bc.isAmbig) {
             addChange(i, 'amb, pu)
           }
         }
@@ -324,7 +338,7 @@ class GenomeRegion(val contig: ReferenceSequence, start: Int, stop: Int)
             if (Pilon.iupac) {
               // we put these on the small fix list because iupac codes can mess up assembly
               // flank anchor kmers
-              smallFixList ::= (locus(i), rBase.toString, Bases.toIUPAC(cBase, bc.altBase).toString)
+              smallFixList ::= (locus(i), rBase.toString, bc.iupacBaseMulti.toString)
             } else {
               snpFixList ::= (locus(i), rBase.toString, cBase.toString)
             }
